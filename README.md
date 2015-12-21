@@ -132,7 +132,7 @@ end
 
 ## API Summary
 
-### `has_draft` Options
+### `has_drafts` Options
 
 To get started, add a call to `has_drafts` to your model. `has_drafts` accepts the following options:
 
@@ -173,7 +173,7 @@ The name to use for the method which returns the soft delete timestamp. Default 
 When you install the Draftsman gem, you get these methods on each model class:
 
 ```ruby
-# Returns whether or not `has_draft` has been called on the model.
+# Returns whether or not `has_drafts` has been called on the model.
 Widget.draftable?
 
 # Returns whether or not a `trashed_at` timestamp is set up on this model.
