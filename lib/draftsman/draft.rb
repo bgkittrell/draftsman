@@ -165,18 +165,6 @@ class Draftsman::Draft < ActiveRecord::Base
     ActiveRecord::Base.transaction do
       case self.event
       when 'create', 'update'
-        # Parents must be published too
-        self.draft_publication_dependencies.each { |dependency| dependency.publish! }
-
-        # Update drafts need to copy over data to main record
-        self.item.attributes = self.reify.attributes if self.update?
-
-        # Write `published_at` attribute
-        self.item.send "#{self.item.class.published_at_attribute_name}=", Time.now
-
-        # Clear out draft
-        self.item.send "#{self.item.class.draft_association_name}_id=", nil
-
         # Determine which columns should be updated
         only   = self.item.class.draftsman_options[:only]
         ignore = self.item.class.draftsman_options[:ignore]
@@ -184,12 +172,24 @@ class Draftsman::Draft < ActiveRecord::Base
         attributes_to_change = only.any? ? only : self.item.attribute_names
         attributes_to_change = attributes_to_change - ignore + ['published_at', "#{self.item.class.draft_association_name}_id"] - skip
 
+        # Parents must be published too
+        self.draft_publication_dependencies.each { |dependency| dependency.publish! }
+
+        # Update drafts need to copy over data to main record
+        self.item.attributes = self.reify.attributes.slice(*attributes_to_change) if self.update?
+
+        # Write `published_at` attribute
+        self.item.send "#{self.item.class.published_at_attribute_name}=", Time.now
+
+        # Clear out draft
+        self.item.send "#{self.item.class.draft_association_name}_id=", nil
+
         # Save without validations or callbacks
         self.item.attributes.slice(*attributes_to_change).each do |key, value|
           self.item.send("#{key}=", value)
         end
         self.item.save(:validate => false)
-        
+
         self.item.reload
 
         # Destroy draft
@@ -264,7 +264,7 @@ class Draftsman::Draft < ActiveRecord::Base
           self.item.class.where(:id => self.item).update_all "#{self.item.class.draft_association_name}_id".to_sym => nil,
                                                              self.item.class.trashed_at_attribute_name => nil
         end
-        
+
         self.destroy
       end
     end
